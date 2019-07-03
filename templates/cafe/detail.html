@@ -12,8 +12,21 @@
 
   <div class="col-12 col-sm-10 col-md-8">
 
-    <h1>{{ cafe.name }}</h1>
-
+    <h1 class="d-inline-block mr-3">{{ cafe.name }}</h1>
+      {% if g.user%}
+        <div id="toggle-cafe-{{cafe.id}}">
+          {% if g.user.has_liked(cafe.id) %}
+            <form class="d-inline-block unlike-button" method="POST" action="/api/unlike">
+              <button class="btn btn-outline-primary mb-3" id="like-button">Unlike</button>
+            </form>
+          {% else %}
+            <form class="d-inline-block like-button" method="POST" action="/api/like">
+              <button class="btn btn-outline-primary mb-3" id="like-button">Like</button>
+            </form>
+          {% endif %}
+        </div>
+      {% endif %}
+      
     <p class="lead">{{ cafe.description }}</p>
 
     <p><a href="{{ cafe.url }}">{{ cafe.url }}</a></p>

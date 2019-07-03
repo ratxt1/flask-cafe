@@ -1,11 +1,11 @@
 """Flask App for Flask Cafe."""
 
 
-from flask import Flask, render_template, request, flash
+from flask import Flask, render_template, request, flash, jsonify
 from flask import redirect, session, g
 from flask_debugtoolbar import DebugToolbarExtension
 
-from models import db, connect_db, Cafe, City, User
+from models import db, connect_db, Cafe, City, User, UserLikesCafe
 from forms import AddOrEditCafeForm, SignupForm, LoginForm, ProfileEditForm
 from sqlalchemy.exc import IntegrityError
 
@@ -56,7 +56,9 @@ def do_logout():
     if CURR_USER_KEY in session:
         del session[CURR_USER_KEY]
 
-
+def check_loggedin():
+    return not g.user
+    
 #######################################
 # homepage
 
@@ -259,3 +261,51 @@ def edit_profile():
     else:
         return render_template('profile/edit-form.html', form=form)
 
+@app.route('/api/likes')
+def check_if_user_likes_cafe():
+    """ Check if user has liked cafe
+
+        Returns JSON: {error}
+    """
+    if not g.user:
+        return jsonify(error="Not logged in")
+    
+    cafe_id = request.args['cafe_id']
+    
+    return jsonify(likes=g.user.has_liked(cafe_id))
+
+@app.route('/api/like', methods=['POST'])
+def like_cafe():
+    """ Likes a post, stores the 'like' in database
+
+        Returns JSON: {error}
+    """
+
+    if not g.user:
+        return jsonify(error="Not logged in")
+
+    cafe_id = request.json['cafe_id']
+
+    g.user.liked_cafes.append(Cafe.query.get(cafe_id))
+
+    db.session.commit()
+
+    return jsonify(liked=cafe_id)
+
+@app.route('/api/unlike', methods=['POST'])
+def unlike_cafe():
+    """ Unlikes a post, delete the 'like' from database
+
+        Returns JSON: {error}
+    """
+    
+    if not g.user:
+        return jsonify(error="Not logged in")
+
+    cafe_id = request.json['cafe_id']
+
+    g.user.liked_cafes.remove(Cafe.query.get(cafe_id))
+
+    db.session.commit()
+
+    return jsonify(unliked=cafe_id)

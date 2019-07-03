@@ -6,7 +6,8 @@ from unittest import TestCase
 
 from flask import session
 from app import app, CURR_USER_KEY, NOT_LOGGED_IN_MSG
-from models import db, Cafe, City, User
+from models import db, Cafe, City, User, UserLikesCafe
+from sqlalchemy.inspection import inspect
 
 # Use test database and don't clutter tests with SQL
 app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql:///flaskcafe-test"
@@ -425,6 +426,7 @@ class NavBarTestCase(TestCase):
 
         self.user_id = user.id
 
+
     def tearDown(self):
         """After tests, remove all users."""
 
@@ -523,4 +525,155 @@ class ProfileViewsTestCase(TestCase):
 class LikeViewsTestCase(TestCase):
     """Tests for views on cafes."""
 
-    # FIXME: add setup/teardown/inidividual tests
+    def setUp(self):
+        """Before each test, add sample user and cafe."""
+
+        User.query.delete()
+        Cafe.query.delete()
+        City.query.delete()
+
+        user = User.register(**TEST_USER_DATA)
+        db.session.add(user)
+
+        db.session.commit()
+
+        sf = City(**CITY_DATA)
+        db.session.add(sf)
+
+        db.session.commit()
+
+        cafe = Cafe(**CAFE_DATA)
+        db.session.add(cafe)
+
+        db.session.commit()
+
+        self.user_id = user.id
+        self.cafe_id = cafe.id
+
+    def tearDown(self):
+        """After each test, remove all users."""
+
+        UserLikesCafe.query.delete()
+        User.query.delete()
+        Cafe.query.delete()
+        City.query.delete()
+        db.session.commit()
+
+
+    def test_liked_cafe_list(self):
+        with app.test_client() as client:
+            
+            user = User.query.get(self.user_id)
+            cafe = Cafe.query.get(self.cafe_id)
+            do_login(client, user.id)
+            
+            like = UserLikesCafe(user_id=self.user_id, cafe_id=self.cafe_id)
+
+            db.session.add(like)
+            db.session.commit()
+            resp = client.get("/profile", follow_redirects=True)
+
+            byte_string = bytes(cafe.name, 'utf-8')
+            self.assertIn(byte_string, resp.data)
+
+    def test_no_likes(self):
+        with app.test_client() as client:
+            do_login(client, self.user_id)
+
+            resp = client.get(
+                "/profile",
+                follow_redirects=True,
+            )
+
+            self.assertIn(b'You have no liked cafes', resp.data)
+
+    def test_anon_api_calls(self):
+        with app.test_client() as client:
+
+            resp = client.get(f"/api/likes?cafe_id={self.cafe_id}")
+
+            self.assertEqual({"error": "Not logged in"}, resp.json)
+
+        with app.test_client() as client:
+
+            resp = client.post("/api/like", json={
+                "cafe_id": self.cafe_id
+            })
+
+            self.assertEqual({"error": "Not logged in"}, resp.json)
+
+        with app.test_client() as client:
+
+            resp = client.post("/api/unlike", json={
+                "cafe_id": self.cafe_id
+            })
+
+            self.assertEqual({"error": "Not logged in"}, resp.json)
+        
+    def test_get_api_likes(self):
+        with app.test_client() as client:
+            do_login(client, self.user_id)
+
+            like = UserLikesCafe(user_id=self.user_id, cafe_id=self.cafe_id)
+
+            db.session.add(like)
+            db.session.commit()
+
+            resp = client.get(f"/api/likes?cafe_id={self.cafe_id}")
+            
+            resp_data = resp.json
+
+            self.assertEqual(
+                resp_data, 
+                dict(
+                    likes=True
+                )
+            )
+ 
+    def test_post_api_like(self):
+        with app.test_client() as client:
+            do_login(client, self.user_id)
+           
+
+            resp = client.post("/api/like", json={
+                "cafe_id": self.cafe_id
+            })
+            
+            resp_data = resp.json
+
+            self.assertEqual(
+                resp_data, 
+                dict(
+                    liked=self.cafe_id
+                )
+            )
+            cafe = Cafe.query.get(self.cafe_id)
+            liked_cafes = User.query.get(self.user_id).liked_cafes
+            self.assertIn(cafe, liked_cafes)
+
+
+    def test_post_api_unlike(self):
+        with app.test_client() as client:
+            do_login(client, self.user_id)
+           
+            like = UserLikesCafe(user_id=self.user_id, cafe_id=self.cafe_id)
+
+            db.session.add(like)
+            db.session.commit()
+            
+            resp = client.post("/api/unlike", json={
+                "cafe_id": self.cafe_id
+            })
+
+            
+            resp_data = resp.json
+
+            self.assertEqual(
+                resp_data, 
+                dict(
+                    unliked=self.cafe_id
+                )
+            )
+            cafe = Cafe.query.get(self.cafe_id)
+            liked_cafes = User.query.get(self.user_id).liked_cafes
+            self.assertNotIn(cafe, liked_cafes)

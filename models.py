@@ -73,7 +73,8 @@ class Cafe(db.Model):
     )
 
     city = db.relationship("City", backref='cafes')
-    liking_users = db.relationship('User', secondary="users_like_cafes", backref="cafe")
+    liking_users = db.relationship('User', secondary="users_like_cafes")
+
     
     def __repr__(self):
         return f'<Cafe id={self.id} name="{self.name}">'
@@ -137,7 +138,7 @@ class User(db.Model):
         nullable=False,
     )
 
-    liked_cafes = db.relationship('Cafe', secondary="users_like_cafes", backref="user")
+    liked_cafes = db.relationship('Cafe', secondary="users_like_cafes")
 
     @classmethod
     def register(
@@ -186,6 +187,9 @@ class User(db.Model):
         """ Returns first_name and last_name for user """
         return self.first_name + " " + self.last_name
 
+    def has_liked(self, cafe_id):
+        return Cafe.query.get(cafe_id) in self.liked_cafes
+
 
 class UserLikesCafe(db.Model):
     """ Middle table for Cafe and User defining what cafes a user likes """
@@ -205,7 +209,7 @@ class UserLikesCafe(db.Model):
     )
 
     def __repr__(self):
-        return f"<UserLikesCafe {self.cafe_id} song {self.user_id}>"
+        return f"<UserLikesCafe {self.cafe_id}  {self.user_id}>"
 
 
 def connect_db(app):

@@ -38,7 +38,12 @@
           </div>
 
           <div class="d-inline-block col-8 col-sm-8 col-md-8">
-            <h2><a href="/cafes/{{cafe.id}}">{{ cafe.name }}</a></h2>
+            <h2 class="d-inline-block mr-3"><a href="/cafes/{{cafe.id}}">{{ cafe.name }}</a></h2>
+            <div id="toggle-cafe-{{cafe.id}}">
+                <form class="d-inline-block unlike-button" method="POST" action="/api/unlike">
+                  <button class="btn btn-outline-primary mb-3" id="like-button">Unlike</button>
+                </form>
+            </div>
             <p>{{ cafe.description }}</p>
             <p>Address: {{ cafe.address }}</p>
           </div>
