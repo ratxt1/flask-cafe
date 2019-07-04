@@ -36,11 +36,17 @@
       {{ cafe.get_city_state() }}<br>
     </p>
 
-    <p>
-      <a class="btn btn-outline-primary" href="/cafes/{{ cafe.id }}/edit">
-        Edit Cafe
-      </a>
-    </p>
+    <div class="col-10">
+        <img class="img-fluid" src='/static/images/maps/{{ cafe.id }}.jpeg'>
+    </div>
+
+    {% if g.user and g.user.admin %}
+      <p>
+        <a class="btn btn-outline-primary" href="/cafes/{{ cafe.id }}/edit">
+          Edit Cafe
+        </a>
+      </p>
+    {% endif %}
 
   </div>
 

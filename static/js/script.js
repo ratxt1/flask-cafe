@@ -26,10 +26,12 @@ async function unlikeCafe(e){
   e.preventDefault()
 
   $parent = $(e.target).parent();
-  cafe_id = $parent.attr('id').split('-')[2];
+  cafe_id = $parent.data('id').split('-')[2];
+  /* TODO can use data attributes (e.g. data-cafe-id={{ cafe.id }})*/
 
   await axios.post('/api/unlike', {"cafe_id": cafe_id});
 
+  // TODO refactor to just change individual attributes
   $parent.empty()
   $parent.append(`
     <form class="d-inline-block like-button" method="POST" action="/api/like">

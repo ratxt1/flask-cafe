@@ -10,6 +10,8 @@ from forms import AddOrEditCafeForm, SignupForm, LoginForm, ProfileEditForm
 from sqlalchemy.exc import IntegrityError
 
 
+
+
 from secrets import FLASK_SECRET_KEY
 
 
@@ -56,9 +58,9 @@ def do_logout():
     if CURR_USER_KEY in session:
         del session[CURR_USER_KEY]
 
-def check_loggedin():
-    return not g.user
-    
+
+
+
 #######################################
 # homepage
 
@@ -98,6 +100,9 @@ def cafe_detail(cafe_id):
 @app.route('/cafes/add', methods=['GET', 'POST'])
 def add_cafe_form():
     """ GET: show add cafe form, POST: adds cafe to database"""
+    if not g.user or not g.user.admin:
+        return 'not authorized', 401
+
     form = AddOrEditCafeForm()
     form.city_code.choices = db.session.query(City.code, City.name).all()
 
@@ -120,6 +125,8 @@ def add_cafe_form():
         
         db.session.add(cafe)
         db.session.commit()
+        cafe.save_map()
+
 
         flash(f'{name} added')
         return redirect(f'/cafes/{cafe.id}')
@@ -130,7 +137,10 @@ def add_cafe_form():
 @app.route('/cafes/<cafe_id>/edit', methods=['GET', 'POST'])
 def edit_cafe_form(cafe_id):
     """ GET: show cafe edit form, POST: update cafe details """
-    cafe = Cafe.query.get(cafe_id)
+    if not g.user or not g.user.admin:
+        return 'not authorized', 401
+
+    cafe = Cafe.query.get_or_404(cafe_id)
 
     form = AddOrEditCafeForm(obj=cafe)
     form.city_code.choices = db.session.query(City.code, City.name).all()
@@ -150,7 +160,9 @@ def edit_cafe_form(cafe_id):
         cafe.city_code = city_code
         cafe.image_url = image_url
 
+
         db.session.commit()
+        cafe.save_map()
 
         flash(f'{name} edited')
         return redirect(f'/cafes/{cafe.id}')
@@ -286,7 +298,7 @@ def like_cafe():
 
     cafe_id = request.json['cafe_id']
 
-    g.user.liked_cafes.append(Cafe.query.get(cafe_id))
+    g.user.liked_cafes.append(Cafe.query.get_or_404(cafe_id))
 
     db.session.commit()
 
@@ -298,14 +310,18 @@ def unlike_cafe():
 
         Returns JSON: {error}
     """
-    
+
     if not g.user:
         return jsonify(error="Not logged in")
 
     cafe_id = request.json['cafe_id']
 
-    g.user.liked_cafes.remove(Cafe.query.get(cafe_id))
+    g.user.liked_cafes.remove(Cafe.query.get_or_404(cafe_id))
 
     db.session.commit()
 
     return jsonify(unliked=cafe_id)
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('404.html'), 404

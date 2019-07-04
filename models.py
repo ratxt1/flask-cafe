@@ -3,6 +3,9 @@
 
 from flask_bcrypt import Bcrypt
 from flask_sqlalchemy import SQLAlchemy
+from secrets import MAPQUEST_API_KEY as API_KEY
+import os
+import requests
 
 
 bcrypt = Bcrypt()
@@ -84,6 +87,32 @@ class Cafe(db.Model):
 
         city = self.city
         return f'{city.name}, {city.state}'
+
+
+    def get_map_url(self):
+        """Get MapQuest URL for a static map for this location."""
+        address = self.address
+        city = self.city.name
+        state = self.city.state
+
+        base = f"https://www.mapquestapi.com/staticmap/v5/map?key={API_KEY}"
+        where = f"{address},{city},{state}"
+        return f"{base}&center={where}&size=@2x&zoom=15&locations={where}"
+
+
+    def save_map(self):
+        """Get static map and save in static/maps directory of this app."""
+        id = self.id
+        address = self.address
+        city = self.city.name
+        state = self.city.state
+
+        path = os.path.abspath(os.path.dirname(__file__))
+        url = self.get_map_url()
+        response = requests.get(url)
+        with open(f'{path}/static/images/maps/{id}.jpeg', "wb") as f:
+            f.write(response.content)
+
 
 class User(db.Model):
     """Users for cafes."""
@@ -167,6 +196,26 @@ class User(db.Model):
             description=description, 
             image_url=image_url
             )
+
+
+        # u = cls(
+        #     username=username, 
+        #     hashed_password=hashed_utf8, 
+        #     admin=admin, 
+        #     email=email, 
+        #     first_name=first_name, 
+        #     last_name=last_name, 
+        #     description=description, 
+        #     image_url=image_url
+        #     )
+
+        # db.session.add(u)
+
+
+        # try:
+        #      db.session.flush()     # the integrity 
+        # except IE:
+        #      raise UsernameTakenError()
     
     @classmethod
     def authenticate(cls, username, pwd):

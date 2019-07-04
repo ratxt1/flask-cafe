@@ -92,7 +92,7 @@ db.session.commit()
 #######################################
 # cafe maps
 
-# c1.save_map()
-# c2.save_map()
-#
-#db.session.commit()
+c1.save_map()
+c2.save_map()
+
+db.session.commit()
